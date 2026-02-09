@@ -1,0 +1,42 @@
+/* Existing styles would be here, appending new styles */
+
+.sources-section {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    font-size: 0.85rem;
+}
+
+.sources-section h4 {
+    margin: 0 0 8px 0;
+    font-size: 0.9rem;
+    color: #2e7d32;
+    /* Dark Green */
+    font-weight: 600;
+}
+
+.sources-section ul {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sources-section li {
+    margin-bottom: 4px;
+}
+
+.sources-section a {
+    color: #43a047;
+    /* Vibrant Green */
+    text-decoration: none;
+    word-break: break-word;
+}
+
+.sources-section a:hover {
+    text-decoration: underline;
+}
+
+/* Dark mode compatibility if needed, though relying on parent styles usually */
+.message-bubble.bot .sources-section {
+    border-top-color: rgba(0, 0, 0, 0.1);
+}
