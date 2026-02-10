@@ -6,3 +6,5 @@ pydantic
 duckduckgo-search
 googlesearch-python
 wikipedia
+chromadb
+sentence-transformers

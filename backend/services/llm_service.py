@@ -1,83 +1,111 @@
 import os
-import google.generativeai as genai
-from typing import List, AsyncGenerator
+import asyncio
+from google import genai
 from dotenv import load_dotenv
+from typing import List
 
 load_dotenv()
 
-# Configure Gemini
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-if not GOOGLE_API_KEY:
-    raise ValueError("GOOGLE_API_KEY not found in environment variables")
+# ---------------- CONFIG ----------------
+API_KEY = os.getenv("GOOGLE_API_KEY")
+if not API_KEY:
+    raise ValueError("GOOGLE_API_KEY missing")
 
-genai.configure(api_key=GOOGLE_API_KEY)
+client = genai.Client(api_key=API_KEY)
 
+
+# ---------------- LLM SERVICE ----------------
 class LLMService:
     def __init__(self):
-        self.model = genai.GenerativeModel("gemini-2.5-flash")
         self.system_instruction = """
-You are a knowledgeable and cautious AI healthcare assistant.
-Your goal is to help users understand their symptoms.
-Always maintain a professional, empathetic tone.
+You are a professional healthcare AI assistant.
 
-IMPORTANT RESPONSE GUIDELINES:
-For every medical query or symptom description, you MUST structure your response into two distinct sections:
-1. **Assessment**: Briefly analyze the reported symptoms.
-2. **Recommendations**: Provide actionable advice, home care tips, or suggestions for when to see a doctor.
+RULES:
+- Never give final diagnosis
+- Give only educational guidance
+- Encourage doctor consultation
+- Use calm, empathetic tone
 
-If the user query is non-medical (greeting, general question), you may skip this structure.
+If user describes symptoms → respond in:
+Assessment
+Recommendations
 """
 
-    async def generate_response(self, history: List[dict], user_message: str, context: str = "") -> str:
-        """
-        Generates a response. 
-        If 'context' is provided, it assumes we are in REPORT mode and injects specific instructions.
-        If 'context' is empty, it acts as a conversational pass-through (or the router handles the question asking).
-        """
-        
-        # Transform history
-        formatted_history = []
+    async def generate_response(
+        self,
+        history: List[dict],
+        user_message: str,
+        context: str = ""
+    ) -> str:
+
+        # -------- build history --------
+        history_text = ""
         for msg in history:
-            formatted_history.append({
-                "role": msg["role"], 
-                "parts": msg["parts"]
-            })
-            
-        chat = self.model.start_chat(history=formatted_history)
-        
+            role = msg["role"]
+            content = msg["parts"][0]
+            history_text += f"{role}: {content}\n"
+
+        # -------- report mode --------
         if context:
-            # REPORT MODE PROMPT
             prompt = f"""
-            INSTRUCTIONS: 
-            Generate a detailed Preliminary Health Assessment based on the User's symptoms and the provided Web Context.
-            
-            CONTEXT:
-            {context}
-            
-            USER SYMPTOMS:
-            {user_message}
-            
-            FORMAT:
-            - ### Preliminary Assessment
-            - ### Potential Causes
-            - ### Home Care Guidance
-            - ### Warning Signs
-            - ### Conclusion
-            - **Disclaimer**: (Standard AI Disclaimer)
-            """
+SYSTEM:
+{self.system_instruction}
+
+REFERENCE CONTEXT:
+{context}
+
+USER SYMPTOMS:
+{user_message}
+
+FORMAT STRICTLY:
+
+### Preliminary Assessment
+### Possible Causes
+### Home Care
+### When to See Doctor
+### Disclaimer
+"""
         else:
-            # CONVERSATIONAL PROMPT
-            # Enforce structure even for standard queries if they look medical
             prompt = f"""
-            User Query: {user_message}
-            
-            Remember to provide an **Assessment** and **Recommendations** if this is a symptom-related query.
-            """
-            
-        try:
-            response = chat.send_message(prompt)
-            return response.text
-        except Exception as e:
-            return f"I apologize, but I'm having trouble connecting. Error: {str(e)}"
+SYSTEM:
+{self.system_instruction}
+
+CHAT HISTORY:
+{history_text}
+
+USER:
+{user_message}
+"""
+
+        # -------- call gemini safely --------
+        for _ in range(2):
+            try:
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model="gemini-2.5-flash-lite",
+                    contents=prompt,
+                )
+                return response.text
+
+            except Exception as e:
+                print("Gemini error:", e)
+                await asyncio.sleep(1)
+
+        return "Server busy. Try again."
 
 
+# ---------------- TEST ----------------
+if __name__ == "__main__":
+    async def test():
+        service = LLMService()
+        history = []
+
+        result = await service.generate_response(
+            history,
+            "I have headache and fever since morning"
+        )
+
+        print("\nAI RESPONSE:\n")
+        print(result)
+
+    asyncio.run(test())

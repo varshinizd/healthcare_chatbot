@@ -1,47 +1,89 @@
-import google.generativeai as genai
-import json
 import os
+import json
+import asyncio
+from google import genai
 from pydantic import BaseModel, Field
+from dotenv import load_dotenv
 
+load_dotenv()
+
+API_KEY = os.getenv("GOOGLE_API_KEY")
+if not API_KEY:
+    raise ValueError("GOOGLE_API_KEY missing")
+
+client = genai.Client(api_key=API_KEY)
+
+
+# -------- RESPONSE STRUCTURE --------
 class QueryAnalysis(BaseModel):
-    intent: str = Field(..., description="The intent of the user query. Can be 'MEDICAL', 'NON_MEDICAL', or 'GREETING'.")
-    completeness: str = Field(..., description="For MEDICAL intent, whether the information is 'VAGUE' (needs more details) or 'SPECIFIC' (ready for analysis). For others, use 'N/A'.")
-    question_to_ask: str = Field(..., description="If intent is MEDICAL and completeness is VAGUE, provide ONE clarifying question. Otherwise empty.")
-    search_term: str = Field(..., description="If intent is MEDICAL and completeness is SPECIFIC, provide a natural language search question (e.g. 'What are the causes of...'). Otherwise empty.")
+    intent: str = Field(..., description="MEDICAL, NON_MEDICAL, GREETING")
+    completeness: str = Field(..., description="VAGUE, SPECIFIC, or N/A")
+    question_to_ask: str = Field(..., description="Clarifying question if vague")
+    search_term: str = Field(..., description="Search query if specific")
 
+
+# -------- ANALYZER CLASS --------
 class QueryAnalyzer:
 
     def __init__(self):
         self.system_prompt = """
-        You are an expert clinical triage AI. Your goal is to gather sufficient information to form a reasonable differential diagnosis.
-        
-        Output JSON with these fields:
-        - intent: "MEDICAL", "NON_MEDICAL", "GREETING".
-        - completeness: "VAGUE" or "SPECIFIC".
-        - question_to_ask: clarifying question if VAGUE.
-        - search_term: natural language search query if SPECIFIC.
+You are an expert clinical triage AI.
 
-        CRITERIA FOR COMPLETENESS:
-        - Mark as "VAGUE" if the current information is insufficient to rule in/out common serious causes.
-        - Mark as "SPECIFIC" ONLY when you have a clear clinical picture (Diagnostic Level Context).
-        
-        INSTRUCTIONS:
-        1. Dynamic Reasoning: Do NOT rely on a fixed checklist.
-        2. Efficiency (MAX 4 TURNS)
-        3. Persistence: Continue marking as VAGUE until enough context.
-        """
+Return ONLY valid JSON with:
+intent: MEDICAL | NON_MEDICAL | GREETING
+completeness: VAGUE | SPECIFIC | N/A
+question_to_ask: ask only if vague
+search_term: search query only if specific
+
+Rules:
+- If greeting → GREETING
+- If normal talk → NON_MEDICAL
+- If symptoms → MEDICAL
+- If symptoms unclear → VAGUE
+- If enough detail → SPECIFIC
+"""
 
     async def analyze(self, user_message: str, history: list) -> dict:
+
         turn_count = (len(history) // 2) + 1
-        prompt = f"Current Conversation Turn: {turn_count}/4\nChat History: {history}\n\nLast User Message: {user_message}"
-        try:
-            response = self.model.generate_content([self.system_prompt, prompt])
-            return json.loads(response.text)
-        except Exception as e:
-            print(f"Analyzer Error: {e}")
-            return {
-                "intent": "MEDICAL",
-                "completeness": "VAGUE",
-                "question_to_ask": "Could you describe your symptoms in more detail?",
-                "search_term": ""
-            }
+
+        prompt = f"""
+SYSTEM:
+{self.system_prompt}
+
+Conversation Turn: {turn_count}/4
+Chat History: {history}
+
+User Message:
+{user_message}
+
+Return only JSON.
+"""
+
+        for _ in range(2):
+            try:
+                response = await asyncio.to_thread(
+                    client.models.generate_content,
+                    model="gemini-2.5-flash-lite",
+                    contents=prompt,
+                )
+
+                text = response.text.strip()
+
+                # remove ```json if model adds
+                if text.startswith("```"):
+                    text = text.replace("```json", "").replace("```", "").strip()
+
+                return json.loads(text)
+
+            except Exception as e:
+                print("Analyzer error:", e)
+                await asyncio.sleep(1)
+
+        # fallback if model fails
+        return {
+            "intent": "MEDICAL",
+            "completeness": "VAGUE",
+            "question_to_ask": "Could you describe your symptoms more clearly?",
+            "search_term": ""
+        }
