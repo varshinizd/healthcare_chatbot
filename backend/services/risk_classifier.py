@@ -42,6 +42,6 @@ class RiskClassifier:
         
 It sounds like you may be experiencing a medical emergency. 
 
-**Please call emergency services (911 or your local equivalent) or go to the nearest Emergency Room IMMEDIATELY.**
+**Please call emergency services (108 or your local equivalent) or go to the nearest Emergency Room IMMEDIATELY.**
 
 I cannot provide further assistance for this situation. Your safety is the top priority."""

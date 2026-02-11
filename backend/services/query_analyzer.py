@@ -17,9 +17,9 @@ client = genai.Client(api_key=API_KEY)
 # -------- RESPONSE STRUCTURE --------
 class QueryAnalysis(BaseModel):
     intent: str = Field(..., description="MEDICAL, NON_MEDICAL, GREETING")
-    completeness: str = Field(..., description="VAGUE, SPECIFIC, or N/A")
-    question_to_ask: str = Field(..., description="Clarifying question if vague")
-    search_term: str = Field(..., description="Search query if specific")
+    completeness: str = Field(..., description="VAGUE or SPECIFIC")
+    follow_up_questions: list[str] = Field(default_factory=list, description="List of follow-up questions if vague")
+    search_term: str = Field(default="", description="Search query if specific")
 
 
 # -------- ANALYZER CLASS --------
@@ -27,20 +27,23 @@ class QueryAnalyzer:
 
     def __init__(self):
         self.system_prompt = """
-You are an expert clinical triage AI.
+You are an expert clinical triage AI acting like a real doctor.
 
-Return ONLY valid JSON with:
+Return ONLY valid JSON:
 intent: MEDICAL | NON_MEDICAL | GREETING
-completeness: VAGUE | SPECIFIC | N/A
-question_to_ask: ask only if vague
-search_term: search query only if specific
+completeness: VAGUE | SPECIFIC
+follow_up_questions: list of questions if more info needed
+search_term: search query if enough info
 
-Rules:
-- If greeting → GREETING
-- If normal talk → NON_MEDICAL
-- If symptoms → MEDICAL
-- If symptoms unclear → VAGUE
-- If enough detail → SPECIFIC
+IMPORTANT RULES:
+- NEVER repeat same fixed questions.
+- Generate questions dynamically based on user symptoms.
+- Each conversation should feel natural and different.
+- Ask one key question at a time like a real consultation.
+- Focus on duration, severity, triggers, associated symptoms.
+- Avoid robotic or template questions.
+
+Only mark SPECIFIC when enough information gathered.
 """
 
     async def analyze(self, user_message: str, history: list) -> dict:
@@ -74,7 +77,19 @@ Return only JSON.
                 if text.startswith("```"):
                     text = text.replace("```json", "").replace("```", "").strip()
 
-                return json.loads(text)
+                data = json.loads(text)
+
+                # 🛡 ensure at least 2 follow-up questions if vague medical
+                if data.get("intent") == "MEDICAL" and data.get("completeness") == "VAGUE":
+                    qs = data.get("follow_up_questions", [])
+
+                    if len(qs) < 2:
+                        qs.append("Since when are you experiencing this?")
+                        qs.append("Are there any other symptoms like fever, pain, or fatigue?")
+
+                    data["follow_up_questions"] = qs
+
+                return data
 
             except Exception as e:
                 print("Analyzer error:", e)
@@ -84,6 +99,9 @@ Return only JSON.
         return {
             "intent": "MEDICAL",
             "completeness": "VAGUE",
-            "question_to_ask": "Could you describe your symptoms more clearly?",
+            "follow_up_questions": [
+                "Since when are you experiencing this?",
+                "Can you describe your symptoms more clearly?"
+            ],
             "search_term": ""
         }

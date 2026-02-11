@@ -45,17 +45,24 @@ Recommendations
             content = msg["parts"][0]
             history_text += f"{role}: {content}\n"
 
-        # -------- report mode --------
+        # -------- report mode (RAG used) --------
         if context:
+            print("\n========== 🧠 RAG CONTEXT RECEIVED ==========\n")
+            print(context[:1000])  # show first 1000 chars
+            print("\n=============================================\n")
+
             prompt = f"""
 SYSTEM:
 {self.system_instruction}
 
-REFERENCE CONTEXT:
+REFERENCE CONTEXT FROM MEDICAL DATABASE:
 {context}
 
 USER SYMPTOMS:
 {user_message}
+
+IMPORTANT:
+Use the provided medical context to generate the response.
 
 FORMAT STRICTLY:
 
@@ -65,7 +72,11 @@ FORMAT STRICTLY:
 ### When to See Doctor
 ### Disclaimer
 """
+
+        # -------- normal chat (no RAG) --------
         else:
+            print("\n⚠️ No RAG context used for this query\n")
+
             prompt = f"""
 SYSTEM:
 {self.system_instruction}
@@ -102,7 +113,8 @@ if __name__ == "__main__":
 
         result = await service.generate_response(
             history,
-            "I have headache and fever since morning"
+            "I have headache and fever since morning",
+            context="Test medical context: fever is caused by infection"
         )
 
         print("\nAI RESPONSE:\n")
