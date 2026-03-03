@@ -7,6 +7,7 @@ from services.llm_service import LLMService
 from services.risk_classifier import RiskClassifier
 from services.query_analyzer import QueryAnalyzer
 from services.rag_engine import RAGEngine
+from services.diagnosis_service import DiagnosisService
 
 app = FastAPI(title="Healthcare Symptom Chatbot")
 
@@ -25,6 +26,7 @@ llm_service = LLMService()
 risk_classifier = RiskClassifier()
 query_analyzer = QueryAnalyzer()
 rag_engine = RAGEngine("medical_clean.json")
+diagnosis_service = DiagnosisService(rag_engine)
 
 
 # ---------------- CHAT ENDPOINT ----------------
@@ -59,30 +61,42 @@ async def chat_endpoint(request: ChatRequest):
     # ============================================================
     # 🧠 CHECK IF FOLLOW-UP MODE ACTIVE
     # ============================================================
-    if session_manager.has_pending_questions(session_id):
-        # store user's answer
+    # ============================================================
+    # CHECK IF QUESTIONING MODE ACTIVE (Clarifying or Gathering)
+    # ============================================================
+    state = session_manager.get_diagnostic_state(session_id)
+    
+    # Process answer if we were waiting for one
+    if state in ["CLARIFYING", "GATHERING"]:
         session_manager.add_answer(session_id, request.message)
+        
+        if session_manager.has_pending_questions(session_id):
+            next_q = session_manager.get_next_question(session_id)
+            if next_q:
+                session_manager.add_message(session_id, "model", next_q)
+                return ChatResponse(response=next_q, session_id=session_id)
+        
+        # If no more questions, transition based on current state
+        if state == "CLARIFYING":
+            session_manager.set_diagnostic_state(session_id, "FINAL")
+            state = "FINAL"
+        else: # GATHERING -> try to narrow down now
+            session_manager.set_diagnostic_state(session_id, "INITIAL")
+            state = "INITIAL"
+            # Proceed to analysis below with the collected info
 
-        # ask next question
-        next_q = session_manager.get_next_question(session_id)
-
-        if next_q:
-            bot_response_text = next_q
-            session_manager.add_message(session_id, "model", bot_response_text)
-            return ChatResponse(response=bot_response_text, session_id=session_id)
-        else:
-            # finished all questions → continue to diagnosis
-            pass
+    if state == "FINAL":
+        history = session_manager.get_history(session_id)
+        diseases = session_manager.get_candidate_diseases(session_id)
+        bot_response_text = await diagnosis_service.get_final_diagnosis(diseases, history)
+        session_manager.add_message(session_id, "model", bot_response_text)
+        return ChatResponse(response=bot_response_text, session_id=session_id)
 
     # ============================================================
-    # 🧠 ANALYZE QUERY
+    # ANALYZE QUERY (INITIAL or NARROWING PHASE)
     # ============================================================
     history = session_manager.get_history(session_id)
-
-    history_text = [
-        f"{msg['role']}: {msg['parts'][0]}"
-        for msg in history[-4:]
-    ]
+    history_text = [f"{msg['role']}: {msg['parts'][0]}" for msg in history[-4:]]
 
     analysis = await query_analyzer.analyze(request.message, history_text)
     print(f"Query Analysis: {analysis}")
@@ -90,42 +104,42 @@ async def chat_endpoint(request: ChatRequest):
     intent = analysis.get("intent", "MEDICAL")
     completeness = analysis.get("completeness", "VAGUE")
     followups = analysis.get("follow_up_questions", [])
+    potential_diseases = analysis.get("potential_diseases", [])
 
     # ---------------- NON MEDICAL ----------------
     if intent == "NON_MEDICAL":
-        bot_response_text = (
-            "I am a healthcare assistant and can only help with medical queries."
-        )
+        bot_response_text = "I am a healthcare assistant and can only help with medical queries."
 
     # ---------------- GREETING ----------------
     elif intent == "GREETING":
-        bot_response_text = (
-            "Hello! I'm your AI Health Assistant. Tell me your symptoms."
-        )
+        bot_response_text = "Hello! I'm your AI Health Assistant. Tell me your symptoms."
 
     # ---------------- MEDICAL ----------------
     elif intent == "MEDICAL":
-
-        # 🔍 NEED MORE INFO → START QUESTION FLOW
-        if completeness == "VAGUE" and followups:
-            session_manager.set_followups(session_id, followups)
-
+        # ENOUGH INFO TO NARROW DOWN -> START CLARIFICATION FLOW
+        if potential_diseases and len(potential_diseases) >= 1:
+            print(f"Narrowed down to: {potential_diseases}")
+            session_manager.set_candidate_diseases(session_id, potential_diseases)
+            session_manager.set_diagnostic_state(session_id, "CLARIFYING")
+            
+            # Generate 4 targeted questions
+            clarifying_qs = await diagnosis_service.generate_clarifying_questions(potential_diseases, request.message)
+            session_manager.set_followups(session_id, clarifying_qs[:4]) # Strict limit
+            
             first_q = session_manager.get_next_question(session_id)
             bot_response_text = first_q if first_q else "Could you explain more?"
 
-        # 🧠 ENOUGH INFO → RAG + LLM
+        # 🔍 NEED MORE INFO TO REACH NARROWING STAGE
+        elif completeness == "VAGUE" and followups:
+            session_manager.set_diagnostic_state(session_id, "GATHERING")
+            session_manager.set_followups(session_id, followups[:4]) # Strict limit
+            first_q = session_manager.get_next_question(session_id)
+            bot_response_text = first_q if first_q else "Could you explain more?"
+
+        # 🧠 FALLBACK (if something goes wrong)
         else:
-            print("🔎 RAG searching knowledge base...")
-
             context = rag_engine.search(request.message)
-
-            past_history = history[:-1]
-
-            bot_response_text = await llm_service.generate_response(
-                past_history,
-                request.message,
-                context=context
-            )
+            bot_response_text = await llm_service.generate_response(history[:-1], request.message, context=context)
 
     # ---------------- FALLBACK ----------------
     else:
@@ -133,7 +147,6 @@ async def chat_endpoint(request: ChatRequest):
 
     # 5️⃣ store bot message
     session_manager.add_message(session_id, "model", bot_response_text)
-
     return ChatResponse(response=bot_response_text, session_id=session_id)
 
 

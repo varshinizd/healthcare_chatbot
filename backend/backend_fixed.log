@@ -1,0 +1,57 @@
+python : Both 
+GOOGLE_API_KEY and 
+GEMINI_API_KEY are 
+set. Using 
+GOOGLE_API_KEY.
+At line:1 char:1
++ python main.py > 
+backend.log 2>&1
++ ~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
+    + CategoryInfo   
+           : 
+NotSpecifi    ed: 
+(Both GOOGLE_A    
+PI...GOOGLE_API_KE   
+ Y.:String) [], Rem  
+  oteException
+    + 
+FullyQualifiedEr    
+rorId : NativeComm   
+ andError
+ 
+Both GOOGLE_API_KEY 
+and GEMINI_API_KEY 
+are set. Using 
+GOOGLE_API_KEY.
+Both GOOGLE_API_KEY 
+and GEMINI_API_KEY 
+are set. Using 
+GOOGLE_API_KEY.
+INFO:     Started 
+server process 
+[14624]
+INFO:     Waiting 
+for application 
+startup.
+INFO:     
+Application startup 
+complete.
+ERROR:    [Errno 
+10048] error while 
+attempting to bind 
+on address 
+('0.0.0.0', 8000): 
+only one usage of 
+each socket address 
+(protocol/network 
+address/port) is 
+normally permitted
+INFO:     Waiting 
+for application 
+shutdown.
+INFO:     
+Application shutdown 
+complete.
+Loading cached RAG...
+RAG loaded instantly

@@ -35,19 +35,35 @@ Recommendations
         self,
         history: List[dict],
         user_message: str,
-        context: str = ""
+        context: str = "",
+        mode: str = "NORMAL"   
+
     ) -> str:
 
         # -------- build history --------
         history_text = ""
-        for msg in history:
-            role = msg["role"]
-            content = msg["parts"][0]
-            history_text += f"{role}: {content}\n"
+
+        if history:
+            for msg in history:
+                role = msg["role"]
+                content = msg["parts"][0]
+                history_text += f"{role}: {content}\n"
+
+        if mode == "FOLLOWUP":
+            prompt = f"""
+            SYSTEM:
+            You are continuing a medical interview.
+            The user is answering a clarification question.
+            Acknowledge briefly and wait for next reasoning step.
+
+            USER ANSWER:
+            {user_message}
+            """
+
 
         # -------- report mode (RAG used) --------
-        if context:
-            print("\n========== 🧠 RAG CONTEXT RECEIVED ==========\n")
+        elif context:
+            print("\n========== RAG CONTEXT RECEIVED ==========\n")
             print(context[:1000])  # show first 1000 chars
             print("\n=============================================\n")
 
@@ -75,14 +91,13 @@ FORMAT STRICTLY:
 
         # -------- normal chat (no RAG) --------
         else:
-            print("\n⚠️ No RAG context used for this query\n")
+            print("\nNo RAG context used for this query\n")
 
             prompt = f"""
 SYSTEM:
 {self.system_instruction}
 
-CHAT HISTORY:
-{history_text}
+{"CHAT HISTORY:\n" + history_text if history_text else ""}
 
 USER:
 {user_message}

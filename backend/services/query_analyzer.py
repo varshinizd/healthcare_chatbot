@@ -20,6 +20,7 @@ class QueryAnalysis(BaseModel):
     completeness: str = Field(..., description="VAGUE or SPECIFIC")
     follow_up_questions: list[str] = Field(default_factory=list, description="List of follow-up questions if vague")
     search_term: str = Field(default="", description="Search query if specific")
+    potential_diseases: list[str] = Field(default_factory=list, description="List of 3 potential diseases from the knowledge base if enough info")
 
 
 # -------- ANALYZER CLASS --------
@@ -33,17 +34,17 @@ Return ONLY valid JSON:
 intent: MEDICAL | NON_MEDICAL | GREETING
 completeness: VAGUE | SPECIFIC
 follow_up_questions: list of questions if more info needed
+potential_diseases: list of up to 3 likely diseases from the provided knowledge base
 search_term: search query if enough info
 
 IMPORTANT RULES:
-- NEVER repeat same fixed questions.
-- Generate questions dynamically based on user symptoms.
+- If the user provides symptoms, identify up to 3 potential diseases from the knowledge base.
+- If the query is just a greeting, intent is GREETING.
+- If the query is not medical, intent is NON_MEDICAL.
+- For medical queries, mark as SPECIFIC if you can identify potential diseases, otherwise VAGUE.
+- Generate questions dynamically based on user symptoms if vague.
 - Each conversation should feel natural and different.
-- Ask one key question at a time like a real consultation.
 - Focus on duration, severity, triggers, associated symptoms.
-- Avoid robotic or template questions.
-
-Only mark SPECIFIC when enough information gathered.
 """
 
     async def analyze(self, user_message: str, history: list) -> dict:
@@ -79,7 +80,7 @@ Return only JSON.
 
                 data = json.loads(text)
 
-                # 🛡 ensure at least 2 follow-up questions if vague medical
+                # ensure at least 2 follow-up questions if vague medical
                 if data.get("intent") == "MEDICAL" and data.get("completeness") == "VAGUE":
                     qs = data.get("follow_up_questions", [])
 

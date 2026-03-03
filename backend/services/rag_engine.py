@@ -18,10 +18,10 @@ class RAGEngine:
         self.vec_file = "vectorizer.pkl"
 
         if os.path.exists(self.index_file):
-            print("⚡ Loading cached RAG...")
+            print("Loading cached RAG...")
             self.load_cache()
         else:
-            print("🧠 Building RAG first time...")
+            print("Building RAG first time...")
             self.build_index(json_path)
             self.save_cache()
 
@@ -48,7 +48,7 @@ Summary: {item.get('summary')}
         self.index = faiss.IndexFlatL2(dim)
         self.index.add(tfidf_matrix)
 
-        print(f"✅ RAG built with {len(self.documents)} entries")
+        print(f"RAG built with {len(self.documents)} entries")
 
     # ---------------- CACHE ----------------
     def save_cache(self):
@@ -60,7 +60,7 @@ Summary: {item.get('summary')}
         with open(self.vec_file, "wb") as f:
             pickle.dump(self.vectorizer, f)
 
-        print("💾 RAG cache saved")
+        print("RAG cache saved")
 
     def load_cache(self):
         self.index = faiss.read_index(self.index_file)
@@ -71,7 +71,7 @@ Summary: {item.get('summary')}
         with open(self.vec_file, "rb") as f:
             self.vectorizer = pickle.load(f)
 
-        print("✅ RAG loaded instantly")
+        print("RAG loaded instantly")
 
     # ---------------- SEARCH ----------------
     def search(self, query, top_k=3):
