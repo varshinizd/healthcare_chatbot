@@ -34,11 +34,22 @@ class DiagnosisService:
         between candidate diseases.
         """
 
-        # -------- Build RAG context --------
+        # -------- Build RAG context safely --------
         context = ""
+
         for disease in diseases:
             disease_info = self.rag_engine.search(disease, top_k=1)
-            context += f"--- {disease} ---\n{disease_info}\n\n"
+
+            # ⭐ Only include valid RAG results
+            if disease_info:
+                context += f"--- {disease} ---\n{disease_info}\n\n"
+
+        # ⭐ If RAG has no useful data
+        if not context.strip():
+            context = (
+                "No structured medical database context available. "
+                "Use general medical knowledge."
+            )
 
         prompt = f"""
 You are a clinical diagnostic expert.
@@ -70,13 +81,11 @@ Example:
             text = response.text.strip()
 
             # ---------------- SAFE JSON EXTRACTION ----------------
-            # Remove markdown blocks if present
             if "```" in text:
                 parts = text.split("```")
                 if len(parts) >= 3:
                     text = parts[-2].strip()
 
-            # Extract JSON list safely
             start = text.find("[")
             end = text.rfind("]") + 1
             text = text[start:end]
@@ -115,18 +124,28 @@ Example:
         and candidate diseases.
         """
 
-        # -------- Format conversation history cleanly --------
+        # -------- Format conversation history --------
         history_text = ""
         for msg in history:
             role = msg.get("role", "user")
             content = msg.get("parts", [""])[0]
             history_text += f"{role}: {content}\n"
 
-        # -------- Build disease context --------
+        # -------- Build RAG context safely --------
         context = ""
+
         for disease in diseases:
             disease_info = self.rag_engine.search(disease, top_k=1)
-            context += f"--- {disease} ---\n{disease_info}\n\n"
+
+            if disease_info:
+                context += f"--- {disease} ---\n{disease_info}\n\n"
+
+        # ⭐ Independent reasoning fallback
+        if not context.strip():
+            context = (
+                "No structured medical database context available. "
+                "Use general medical knowledge."
+            )
 
         prompt = f"""
 You are an expert doctor.

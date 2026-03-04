@@ -17,7 +17,12 @@ class RAGEngine:
         self.doc_file = "docs.pkl"
         self.vec_file = "vectorizer.pkl"
 
-        if os.path.exists(self.index_file):
+        # ---- Load cache safely ----
+        if (
+            os.path.exists(self.index_file)
+            and os.path.exists(self.doc_file)
+            and os.path.exists(self.vec_file)
+        ):
             print("Loading cached RAG...")
             self.load_cache()
         else:
@@ -25,7 +30,9 @@ class RAGEngine:
             self.build_index(json_path)
             self.save_cache()
 
-    # ---------------- BUILD ----------------
+    # =====================================================
+    # BUILD INDEX
+    # =====================================================
     def build_index(self, path):
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
@@ -34,15 +41,21 @@ class RAGEngine:
 
         for item in data:
             text = f"""
-Disease: {item.get('disease')}
+Disease: {item.get('disease', '')}
 Also Called: {', '.join(item.get('also_called', []))}
 Category: {', '.join(item.get('category', []))}
-Summary: {item.get('summary')}
-"""
+Summary: {item.get('summary', '')}
+""".strip()
+
             texts.append(text)
             self.documents.append(text)
 
-        tfidf_matrix = self.vectorizer.fit_transform(texts).toarray().astype("float32")
+        tfidf_matrix = (
+            self.vectorizer
+            .fit_transform(texts)
+            .toarray()
+            .astype("float32")
+        )
 
         dim = tfidf_matrix.shape[1]
         self.index = faiss.IndexFlatL2(dim)
@@ -50,7 +63,9 @@ Summary: {item.get('summary')}
 
         print(f"RAG built with {len(self.documents)} entries")
 
-    # ---------------- CACHE ----------------
+    # =====================================================
+    # CACHE
+    # =====================================================
     def save_cache(self):
         faiss.write_index(self.index, self.index_file)
 
@@ -73,14 +88,38 @@ Summary: {item.get('summary')}
 
         print("RAG loaded instantly")
 
-    # ---------------- SEARCH ----------------
-    def search(self, query, top_k=3):
-        query_vec = self.vectorizer.transform([query]).toarray().astype("float32")
+    # =====================================================
+    # SEARCH WITH RELEVANCE CHECK ⭐
+    # =====================================================
+    def search(self, query, top_k=3, threshold=1.2):
+        """
+        Returns medical context if similarity is strong.
+        Returns None if no relevant KB match exists.
+        """
+
+        if not query or not query.strip():
+            return None
+
+        query_vec = (
+            self.vectorizer
+            .transform([query])
+            .toarray()
+            .astype("float32")
+        )
 
         distances, indices = self.index.search(query_vec, top_k)
 
+        best_distance = distances[0][0]
+        print(f"RAG similarity distance: {best_distance:.4f}")
+
+        # Higher distance = worse similarity
+        if best_distance > threshold:
+            print("No strong KB match → allow LLM reasoning")
+            return None
+
         results = []
         for idx in indices[0]:
-            results.append(self.documents[idx])
+            if 0 <= idx < len(self.documents):
+                results.append(self.documents[idx])
 
         return "\n\n".join(results)

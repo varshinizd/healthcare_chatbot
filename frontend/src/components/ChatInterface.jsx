@@ -1,23 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { sendMessage } from '../services/api';
-import './ChatInterface.css'; // We'll create this or use styled components? Let's use CSS modules or just a CSS file for simplicity alongside.
+import './ChatInterface.css';
 
 const ChatInterface = () => {
+
+    // =====================================================
+    // STATE
+    // =====================================================
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [sessionId, setSessionId] = useState(null);
+    const [isLocked, setIsLocked] = useState(false);
+
     const messagesEndRef = useRef(null);
 
+    // =====================================================
+    // LOAD SESSION + HISTORY
+    // =====================================================
     useEffect(() => {
-        // Load session ID from local storage or generate/wait for backend
         const storedSession = localStorage.getItem('chat_session_id');
-        if (storedSession) {
-            setSessionId(storedSession);
-        }
+        const storedMessages = localStorage.getItem('chat_messages');
+
+        if (storedSession) setSessionId(storedSession);
+        if (storedMessages) setMessages(JSON.parse(storedMessages));
     }, []);
 
+    // save messages automatically
+    useEffect(() => {
+        localStorage.setItem('chat_messages', JSON.stringify(messages));
+    }, [messages]);
+
+    // =====================================================
+    // AUTO SCROLL
+    // =====================================================
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     };
@@ -26,11 +43,28 @@ const ChatInterface = () => {
         scrollToBottom();
     }, [messages]);
 
+    // =====================================================
+    // RESET SESSION
+    // =====================================================
+    const handleEndSession = () => {
+        localStorage.removeItem('chat_session_id');
+        localStorage.removeItem('chat_messages');
+
+        setSessionId(null);
+        setMessages([]);
+        setIsLocked(false);
+    };
+
+    // =====================================================
+    // SEND MESSAGE
+    // =====================================================
     const handleSend = async (e) => {
         e.preventDefault();
-        if (!input.trim() || isLoading) return;
+
+        if (!input.trim() || isLoading || isLocked) return;
 
         const userMsg = { role: 'user', content: input };
+
         setMessages(prev => [...prev, userMsg]);
         setInput('');
         setIsLoading(true);
@@ -38,44 +72,92 @@ const ChatInterface = () => {
         try {
             const data = await sendMessage(userMsg.content, sessionId);
 
-            // Update session ID if new
+            // update session id
             if (data.session_id && data.session_id !== sessionId) {
                 setSessionId(data.session_id);
                 localStorage.setItem('chat_session_id', data.session_id);
             }
 
-            const botMsg = { role: 'bot', content: data.response };
+            // emergency lock detection
+            if (data.response.includes("EMERGENCY ALERT")) {
+                setIsLocked(true);
+            }
+
+            const botMsg = {
+                role: 'bot',
+                content: data.response
+            };
+
             setMessages(prev => [...prev, botMsg]);
+
         } catch (error) {
-            const errorMsg = { role: 'system', content: "⚠️ Error: Could not connect to the healthcare assistant. Please try again." };
+            const errorMsg = {
+                role: 'system',
+                content:
+                    "⚠️ Error: Could not connect to the healthcare assistant. Please try again."
+            };
+
             setMessages(prev => [...prev, errorMsg]);
+
         } finally {
             setIsLoading(false);
         }
     };
 
+    // =====================================================
+    // UI
+    // =====================================================
     return (
         <div className="chat-container">
+
+            {/* HEADER */}
             <header className="chat-header">
-                <h1>HealthGuide AI</h1>
-                <p>Symptom Assessment Assistant</p>
+                <div className="header-row">
+                    <div>
+                        <h1>HealthGuide AI</h1>
+                        <p>Symptom Assessment Assistant</p>
+                    </div>
+
+                    {/* ALWAYS VISIBLE RESET BUTTON */}
+                    <button
+                        className="end-session-btn"
+                        onClick={handleEndSession}
+                        disabled={!messages.length}
+                    >
+                        Reset Chat
+                    </button>
+                </div>
             </header>
 
+            {/* MESSAGE AREA */}
             <div className="messages-area">
+
                 {messages.length === 0 && (
                     <div className="welcome-message">
                         <h2>Hello! 👋</h2>
-                        <p>I can help assess your symptoms and provide preliminary guidance.</p>
-                        <p>What specific symptoms are you experiencing today?</p>
-                        <small>Remember: I cannot provide a medical diagnosis.</small>
+                        <p>
+                            I can help assess your symptoms and provide
+                            preliminary guidance.
+                        </p>
+                        <p>
+                            What specific symptoms are you experiencing today?
+                        </p>
+                        <small>
+                            Remember: I cannot provide a medical diagnosis.
+                        </small>
                     </div>
                 )}
 
                 {messages.map((msg, index) => (
-                    <div key={index} className={`message-bubble ${msg.role}`}>
+                    <div
+                        key={index}
+                        className={`message-bubble ${msg.role}`}
+                    >
                         <div className="message-content">
                             {msg.role === 'bot' ? (
-                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                <ReactMarkdown>
+                                    {msg.content}
+                                </ReactMarkdown>
                             ) : (
                                 <p>{msg.content}</p>
                             )}
@@ -86,29 +168,53 @@ const ChatInterface = () => {
                 {isLoading && (
                     <div className="message-bubble bot loading">
                         <div className="typing-indicator">
-                            <span></span><span></span><span></span>
+                            <span></span>
+                            <span></span>
+                            <span></span>
                         </div>
                     </div>
                 )}
+
                 <div ref={messagesEndRef} />
             </div>
 
+            {/* INPUT AREA */}
             <form className="input-area" onSubmit={handleSend}>
-                <input
-                    type="text"
+
+                <textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Describe your symptoms..."
-                    disabled={isLoading}
+                    placeholder={
+                        isLocked
+                            ? "Session paused due to emergency..."
+                            : "Describe your symptoms..."
+                    }
+                    disabled={isLoading || isLocked}
+                    onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleSend(e);
+                        }
+                    }}
                 />
-                <button type="submit" disabled={isLoading || !input.trim()}>
+
+                <button
+                    type="submit"
+                    disabled={isLoading || !input.trim() || isLocked}
+                >
                     ➤
                 </button>
             </form>
 
+            {/* DISCLAIMER */}
             <footer className="disclaimer-footer">
-                <p>⚠️ <strong>Disclaimer:</strong> Not a doctor. For educational purposes only. In emergencies, call your local emergency number.</p>
+                <p>
+                    ⚠️ <strong>Disclaimer:</strong> Not a doctor.
+                    Educational guidance only.
+                    In emergencies, call your local emergency number.
+                </p>
             </footer>
+
         </div>
     );
 };

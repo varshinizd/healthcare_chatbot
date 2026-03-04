@@ -36,8 +36,7 @@ Recommendations
         history: List[dict],
         user_message: str,
         context: str = "",
-        mode: str = "NORMAL"   
-
+        mode: str = "NORMAL"
     ) -> str:
 
         # -------- build history --------
@@ -49,22 +48,32 @@ Recommendations
                 content = msg["parts"][0]
                 history_text += f"{role}: {content}\n"
 
+        # =====================================================
+        # FOLLOWUP MODE
+        # =====================================================
         if mode == "FOLLOWUP":
             prompt = f"""
-            SYSTEM:
-            You are continuing a medical interview.
-            The user is answering a clarification question.
-            Acknowledge briefly and wait for next reasoning step.
+SYSTEM:
+{self.system_instruction}
 
-            USER ANSWER:
-            {user_message}
-            """
+You are continuing a medical interview.
+The user is answering a clarification question.
 
+Respond briefly and naturally.
+Do NOT provide assessment yet.
+Do NOT diagnose.
 
-        # -------- report mode (RAG used) --------
-        elif context:
+USER ANSWER:
+{user_message}
+"""
+
+        # =====================================================
+        # RAG MODE
+        # =====================================================
+        elif context and context.strip():
+
             print("\n========== RAG CONTEXT RECEIVED ==========\n")
-            print(context[:1000])  # show first 1000 chars
+            print(context[:1000])
             print("\n=============================================\n")
 
             prompt = f"""
@@ -89,7 +98,9 @@ FORMAT STRICTLY:
 ### Disclaimer
 """
 
-        # -------- normal chat (no RAG) --------
+        # =====================================================
+        # NORMAL MODE
+        # =====================================================
         else:
             print("\nNo RAG context used for this query\n")
 
@@ -111,7 +122,7 @@ USER:
                     model="gemini-2.5-flash-lite",
                     contents=prompt,
                 )
-                return response.text
+                return response.text.strip()
 
             except Exception as e:
                 print("Gemini error:", e)
