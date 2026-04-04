@@ -1,0 +1,23 @@
+FEVER
+A fever is a temporary increase in body temperature, often due to illness. Normal body temperature is around 37°C (98.6°F). A fever is generally considered when temperature exceeds 38°C (100.4°F). Common causes include viral infections (influenza, COVID-19), bacterial infections, and inflammatory conditions. Symptoms accompanying fever may include chills, sweating, headache, muscle aches, and fatigue. In adults, fevers above 39.4°C (103°F) warrant medical attention. In children under 3 months, any fever requires immediate medical evaluation. Treatment includes rest, hydration, and antipyretics such as acetaminophen or ibuprofen.
+
+HEADACHE
+Headaches are among the most common pain conditions worldwide. Primary headaches include tension-type headaches, migraines, and cluster headaches. Tension headaches typically present as a dull, aching sensation around the head. Migraines are characterized by throbbing pain, often on one side, accompanied by nausea, vomiting, and sensitivity to light and sound. Red flag symptoms requiring urgent evaluation include sudden severe headache (thunderclap), headache with fever and neck stiffness, headache following head injury, and progressive worsening headache. Secondary headaches can be caused by hypertension, sinus infections, medication overuse, or intracranial pathology.
+
+FATIGUE
+Fatigue is a feeling of constant tiredness, weakness, or lack of energy. It differs from normal tiredness in that it is not resolved by rest. Common causes include anemia, thyroid disorders, diabetes, sleep disorders (sleep apnea, insomnia), depression, chronic fatigue syndrome, and heart disease. Evaluation typically involves blood tests including complete blood count, thyroid function tests, metabolic panel, and iron studies. Lifestyle factors contributing to fatigue include poor sleep hygiene, sedentary lifestyle, poor nutrition, and dehydration.
+
+CHEST TIGHTNESS (NON-EMERGENCY)
+Chest tightness as a chronic or recurrent symptom (not acute) may be associated with asthma, gastroesophageal reflux disease (GERD), anxiety, costochondritis, or musculoskeletal causes. Asthma-related chest tightness is often accompanied by wheezing, cough, and shortness of breath, particularly at night or with exercise. GERD can cause a burning sensation in the chest, often after meals. Any new or unexplained chest tightness should be evaluated by a healthcare professional to rule out cardiac causes.
+
+NAUSEA AND VOMITING
+Nausea and vomiting can be caused by numerous conditions including gastroenteritis, food poisoning, motion sickness, pregnancy (morning sickness), medications, migraines, and inner ear disorders. Treatment focuses on addressing the underlying cause, maintaining hydration, and symptomatic relief. Oral rehydration therapy is recommended for mild to moderate dehydration. Medical attention is warranted for vomiting lasting more than 24 hours, vomiting blood, signs of dehydration, or vomiting accompanied by severe abdominal pain.
+
+SHORTNESS OF BREATH (CHRONIC/MILD)
+Chronic or mild shortness of breath (dyspnea) can be caused by anemia, asthma, chronic obstructive pulmonary disease (COPD), heart failure, obesity, or deconditioning. Assessment includes evaluation of onset, duration, triggers, and associated symptoms. Pulmonary function tests, chest X-ray, and echocardiogram may be part of the diagnostic workup. According to GOLD guidelines, COPD is classified by severity based on FEV1/FVC ratio. Treatment varies by cause and may include bronchodilators, corticosteroids, or cardiac medications.
+
+JOINT PAIN
+Joint pain (arthralgia) can affect one or multiple joints. Common causes include osteoarthritis, rheumatoid arthritis, gout, lupus, viral infections, and injuries. Osteoarthritis is the most common form, characterized by cartilage breakdown due to wear and tear. Rheumatoid arthritis is an autoimmune condition causing symmetric joint inflammation. Gout results from uric acid crystal deposition, typically affecting the first metatarsophalangeal joint. Diagnostic workup may include inflammatory markers (ESR, CRP), uric acid levels, rheumatoid factor, ANA, and joint imaging.
+
+SKIN RASH
+Skin rashes have many causes including allergic reactions, eczema, psoriasis, fungal infections, viral exanthems, and contact dermatitis. Eczema (atopic dermatitis) presents as itchy, inflamed skin often in flexural areas. Psoriasis is characterized by thick, silvery scales on erythematous plaques. Contact dermatitis results from direct skin contact with an irritant or allergen. Diagnostic clues include distribution, morphology, associated symptoms, and exposure history. Treatment varies by cause and may include topical corticosteroids, antihistamines, antifungals, or systemic therapies.

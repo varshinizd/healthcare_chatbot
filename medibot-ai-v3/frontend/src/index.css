@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  html { font-family: 'DM Sans', sans-serif; }
+  body { margin: 0; background: #0f172a; color: #f8fafc; }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+  ::-webkit-scrollbar-thumb:hover { background: #475569; }
+}
+
+@layer components {
+  .chat-bg {
+    background-color: #0f172a;
+    background-image:
+      radial-gradient(circle at 15% 50%, rgba(13, 148, 136, 0.07) 0%, transparent 50%),
+      radial-gradient(circle at 85% 30%, rgba(20, 184, 166, 0.05) 0%, transparent 40%),
+      url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%230d9488' fill-opacity='0.03'%3E%3Cpath d='M26 28h8v4h-8v8h-4v-8h-8v-4h8v-8h4v8z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+
+  .message-enter {
+    animation: slideUp 0.25s ease-out forwards;
+  }
+
+  .glass-card {
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(51, 65, 85, 0.5);
+  }
+
+  .emergency-pulse {
+    animation: emergencyPulse 1s ease-in-out infinite;
+  }
+
+  @keyframes emergencyPulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(220, 38, 38, 0); }
+  }
+}
+
+.prose-medical p { margin: 0.5rem 0; line-height: 1.7; }
+.prose-medical ul { margin: 0.5rem 0 0.5rem 1.25rem; }
+.prose-medical li { margin: 0.25rem 0; }
+.prose-medical strong { color: #5eead4; font-weight: 600; }
+.prose-medical code { background: #1e293b; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.875em; }
